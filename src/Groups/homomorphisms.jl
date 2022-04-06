@@ -358,17 +358,23 @@ end
 """
     isisomorphic(G::Group, H::Group)
 
-Return (`true`,`f`) if `G` and `H` are isomorphic groups, where `f` is a group
-isomorphism. Otherwise, return (`false`,`f`), where `f` is the trivial
-homomorphism.
+Return `true` if `G` and `H` are isomorphic groups, and `false` otherwise.
 """
 function isisomorphic(G::GAPGroup, H::GAPGroup)
   mp = GAP.Globals.IsomorphismGroups(G.X, H.X)
-  if mp == GAP.Globals.fail
-    return false, trivial_morphism(G, H)
-  else
-    return true, GAPGroupHomomorphism(G, H, mp)
-  end
+  return mp !== GAP.Globals.fail
+end
+
+"""
+    isomorphism(G::Group, H::Group)
+
+Return a group isomorphism between `G` and `H` if they are isomorphic groups.
+Otherwise throw an exception.
+"""
+function isomorphism(G::GAPGroup, H::GAPGroup)
+  mp = GAP.Globals.IsomorphismGroups(G.X, H.X)
+  mp === GAP.Globals.fail && throw(ArgumentError("the groups are not isomorphic"))
+  return GAPGroupHomomorphism(G, H, mp)
 end
 
 """
