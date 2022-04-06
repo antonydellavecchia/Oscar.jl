@@ -15,7 +15,9 @@ export
 Return the number of primitive permutation groups of degree `n`,
 up to permutation isomorphism.
 """
-number_primitive_groups(n::Int) = GAP.Globals.NrPrimitiveGroups(n)::GapInt
+function number_primitive_groups(n::Int)
+    return fmpz(GAP.Globals.NrPrimitiveGroups(n))
+end
 
 """
     primitive_group(deg::Int, i::Int)

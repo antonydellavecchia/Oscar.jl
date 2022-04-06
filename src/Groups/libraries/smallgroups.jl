@@ -27,8 +27,9 @@ export
     all_small_groups,
     all_small_group_ids, # IdsOfAllSmallGroups
     number_small_groups,
-    small_groups_available,   # NumberSmallGroupsAvailable
-    small_group_ids_available,  # IdGroupsAvailable
+    has_number_small_groups,
+    has_small_group_ids,
+    has_small_groups,
     small_group,
     small_group_identification
 
@@ -39,29 +40,121 @@ export
 ###################################################################
 
 """
-    small_group(n::Int, i::Int)
+    has_number_small_groups(n::IntegerUnion)
 
-Return the `i`-th group of order `n` in the catalogue of GAP's Small Groups
-Library. The group is given of type `PcGroup` if the group is solvable,
-`PermGroup` otherwise.
+Return `true` if the number of groups of order `n` is known, otherwise `false`.
+
+# Examples
+```jldoctest
+julia> has_number_small_groups(1024)
+true
+
+julia> has_number_small_groups(2048)
+false
+```
 """
-function small_group(n::Int, m::Int)
-  N = number_small_groups(n)
-  @assert m <= N "There are only $N groups of order $n, up to isomorphism."
-  G = GAP.Globals.SmallGroup(n, m)
+function has_number_small_groups(n::IntegerUnion)
+    n >= 1 || throw(ArgumentError("group order must be positive, not $n"))
+    return GAP.Globals.NumberSmallGroupsAvailable(GAP.Obj(n))
+end
+
+"""
+    has_small_groups(n::IntegerUnion)
+
+Return `true` if the groups of order `n` are available via `small_group`
+and `all_small_groups`, otherwise `false`.
+
+# Examples
+```jldoctest
+julia> has_small_groups(512)
+true
+
+julia> has_small_groups(1024)
+false
+```
+"""
+function has_small_groups(n::IntegerUnion)
+    n >= 1 || throw(ArgumentError("group order must be positive, not $n"))
+    return GAP.Globals.SmallGroupsAvailable(GAP.Obj(n))
+end
+
+"""
+    has_small_group_ids(n::IntegerUnion)
+
+Return `true` if identification for groups of order `n` is available via
+`small_group_identification`, otherwise `false`.
+
+# Examples
+```jldoctest
+julia> has_small_group_ids(256)
+true
+
+julia> has_small_group_ids(512)
+false
+```
+"""
+function has_small_group_ids(n::IntegerUnion)
+    n >= 1 || throw(ArgumentError("group order must be positive, not $n"))
+    return GAP.Globals.IdGroupsAvailable(GAP.Obj(n))
+end
+
+"""
+    small_group(::Type{T}, n::IntegerUnion, i::IntegerUnion) where T
+    small_group(n::IntegerUnion, i::IntegerUnion)
+
+Return the `i`-th group of order `n` in the Small Groups Library. If a type
+`T` is specified then an attempt is made to return the result with that type.
+If `T` is omitted then the resulting group will have type `PcGroup` if it is
+solvable, otherwise it will be of type `PermGroup`.
+
+# Examples
+```jldoctest
+julia> small_group(60, 4)
+<pc group of size 60 with 4 generators>
+
+julia> small_group(60, 5)
+Group([ (1,2,3,4,5), (1,2,3) ])
+
+julia> small_group(PcGroup, 60, 4)
+<pc group of size 60 with 2 generators>
+```
+"""
+function small_group(::Type{T}, n::IntegerUnion, m::IntegerUnion) where T
+  G = _small_group(n, m)
+  return T(G)
+end
+
+function small_group(n::IntegerUnion, m::IntegerUnion)
+  G = _small_group(n, m)
   T = _get_type(G)
   return T(G)
 end
+
+function _small_group(n::IntegerUnion, m::IntegerUnion)
+  N = number_small_groups(n)
+  m <= N || throw(ArgumentError("There are only $N groups of order $n, up to isomorphism."))
+  return GAP.Globals.SmallGroup(GAP.Obj(n), GAP.Obj(m))
+end
+
 
 """
     small_group_identification(G::Group)
 
 Return `(n, m)`, where `G` is isomorphic with `small_group(n, m)`.
+
+# Examples
+```jldoctest
+julia> small_group_identification(alternating_group(5))
+(60, 5)
+```
 """
 function small_group_identification(G::GAPGroup)
-  r = GAP.Globals.IdGroup(G.X)
-  return (r[1], r[2])
+   isfinite(G) || error("group is not finite")
+   res = GAP.Globals.IdGroup(G.X)
+   res !== GAP.Globals.fail || error("identification is not available for groups of order $(order(G))")
+   return Tuple{Int,Int}(res)
 end
+
 
 """
     number_small_groups(n::IntegerUnion)
@@ -69,6 +162,7 @@ end
 Return the number of groups of order `n`, up to isomorphism.
 """
 function number_small_groups(n::IntegerUnion)
+    n >= 1 || throw(ArgumentError("group order must be positive, not $n"))
     return fmpz(GAP.Globals.NumberSmallGroups(n))
 end
 
