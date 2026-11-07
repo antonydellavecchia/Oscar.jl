@@ -1,0 +1,186 @@
+syntax = "proto3";
+
+package kvdb;
+option go_package="./;kvdbrpc";
+option cc_generic_services=true;
+
+import "google/protobuf/empty.proto";
+import "value.proto";
+import "condition.proto";
+import "sort.proto";
+
+// Record is the type defining a record in a table. The keys of the map are the
+// keys of the record, and the values of the map are the values of the record.
+message Record {
+    map<string, Value> values = 1;  // The map of record keys to values
+}
+
+// HasRecord allows for the possibility of no record to return, for example
+// after performing a SelectOne query.
+message HasRecord {
+    bool has_record = 1;        // Is there a record?
+    Record record = 2;          // The associated record
+}
+
+// NumberOfRecords is the result of performing a task whose result is the
+// number of records.
+message NumberOfRecords {
+    int64 n = 1;                // The number of matching records
+}
+
+// ConditionAndReplacement describes the condition to match against and the
+// replacement values.
+message ConditionAndReplacement {
+    Condition condition = 1;    // The condition to match against
+    Record replacement = 2;     // The replacement values
+}
+
+// ConditionTemplateAndOrder is the argument for a SelectOneWhere task.
+message ConditionTemplateAndOrder {
+    Condition condition = 1;    // The condition to match against
+    Record template = 2;        // A template for the returned records
+    OrderBy order = 3;          // The sort order
+}
+
+// ConditionTemplateOrderAndLimit is the argument for a SelectWhereLimit task.
+message ConditionTemplateOrderAndLimit {
+    Condition condition = 1;    // The condition to match against
+    Record template = 2;        // A template for the returned records
+    OrderBy order = 3;          // The sort order
+    int64 limit = 4;            // Limit the number of records to return (a
+                                // negative value means no limit)
+}
+
+// DatabaseNames encodes a list of database names.
+message DatabaseNames {
+    repeated string name = 1;
+}
+
+// TableNames encodes a list of table names.
+message TableNames {
+    repeated string name = 1;
+}
+
+// Name describes the name of a table.
+message Name {
+    string name = 1;
+}
+
+// NameAndTemplate describes the name and template for a table.
+message NameAndTemplate {
+    string name = 1;
+    Record template = 2;
+}
+
+// SrcAndDstNames describes a pair of table names.
+message SrcAndDstNames {
+    string src = 1;
+    string dst = 2;
+}
+
+// Index describes the name of an index.
+message Index {
+    string index = 1;
+}
+
+// IndexList is a list of indices.
+message IndexList {
+    repeated Index list = 1;
+}
+
+// Key describes a key.
+message Key {
+    string key = 1;
+}
+
+// KeyList is a list of keys.
+message KeyList {
+    repeated Key list = 1;
+}
+
+// Kvdb describes the tasks available to a client.
+//
+// Every call may include the following metadata:
+//  - db_name               The DB name
+//  - table_name            The table name
+//
+// On return, the trailer metadata may be used to encode any error. The trailer
+// metadata should be inspected for the presence of:
+//  - error                 A string description of the error
+//  - error_code            The corresponding integer error code (optional)
+// Additional information may also be included in the trailer metadata to
+// describe the cause of the error. If present, this is of the form:
+//  - error_cause_N         A string description of the error
+//  - error_cause_N_code    The corresponding integer error code (optional)
+// where the N are successive positive integers starting at 1.
+//
+// The possible error codes are documented at:
+//  https://godoc.org/bitbucket.org/pcas/keyvalue/errors
+service Kvdb {
+    // ListDatabases returns the available databases.
+    rpc ListDatabases(google.protobuf.Empty) returns(DatabaseNames) {};
+    // ListTables returns the tables in the database.
+    // Note that 'db_name' must be set.
+    rpc ListTables(google.protobuf.Empty) returns(TableNames) {};
+    // CreateTable creates a table with the given name and template.
+    // Note that 'db_name' must be set.
+    rpc CreateTable(NameAndTemplate) returns(google.protobuf.Empty) {};
+    // DeleteTable deletes the table with the given name.
+    // Note that 'db_name' must be set.
+    rpc DeleteTable(Name) returns(google.protobuf.Empty) {};
+    // RenameTable changes the name of a table in the database.
+    // Note that 'db_name' must be set.
+	rpc RenameTable(SrcAndDstNames) returns(google.protobuf.Empty) {};
+    // DescribeTable returns a best-guess template for the data in the table.
+    // Note that 'db_name' and 'table_name' must be set.
+    rpc DescribeTable(google.protobuf.Empty) returns(Record) {};
+    // CountWhere returns the number of records in the table that match the
+    // given condition.
+    // Note that 'db_name' and 'table_name' must be set.
+    rpc CountWhere(Condition) returns(NumberOfRecords) {};
+    // Insert inserts the records from stream into the table.
+    // Note that 'db_name' and 'table_name' must be set.
+    rpc Insert(stream Record) returns(google.protobuf.Empty) {};
+	// UpdateWhere updates all records in the table that match the given
+    // condition by setting all keys present in the given record to the
+    // corresponding values. Returns the number of records updated.
+    // Note that 'db_name' and 'table_name' must be set.
+    rpc UpdateWhere(ConditionAndReplacement) returns(NumberOfRecords) {};
+	// SelectWhereLimit returns a stream of records matching the given
+    // condition. The returned records will be in the form specified by the
+    // given template. If the given limit is non-negative then at most that
+    // many records will be returned.
+    // Note that 'db_name' and 'table_name' must be set.
+	rpc SelectWhereLimit(ConditionTemplateOrderAndLimit) returns(stream Record){};
+    // SelectOneWhere returns zero or one records, encoded in a HasRecord,
+    // matching the given condition. The returned record will be in the form
+    // specified by the given template.
+    // Note that 'db_name' and 'table_name' must be set.
+    rpc SelectOneWhere(ConditionTemplateAndOrder) returns(HasRecord) {};
+	// DeleteWhere deletes those records in the table that match the given
+	// condition. Returns the number of records deleted.
+    // Note that 'db_name' and 'table_name' must be set.
+    rpc DeleteWhere(Condition) returns(NumberOfRecords) {};
+    // AddIndex adds an index on the given key.
+    // Note that 'db_name' and 'table_name' must be set.
+	rpc AddIndex(Index) returns(google.protobuf.Empty) {};
+	// DeleteIndex deletes the index on the given key.
+    // Note that 'db_name' and 'table_name' must be set.
+	rpc DeleteIndex(Index) returns(google.protobuf.Empty) {};
+	// ListIndices lists the keys for which indices are present.
+    // Note that 'db_name' and 'table_name' must be set.
+	rpc ListIndices(google.protobuf.Empty) returns(IndexList) {};
+    // AddKeys updates each record r in the table, adding any keys in the given
+    // record that are not already present along with the corresponding values.
+    // Any keys that are already present in r will be left unmodified.
+    // Note that 'db_name' and 'table_name' must be set.
+    rpc AddKeys(Record) returns(google.protobuf.Empty) {};
+    // DeleteKeys updates all records in the table, deleting the specified keys
+    // if present.
+    // Note that 'db_name' and 'table_name' must be set.
+    rpc DeleteKeys(KeyList) returns(google.protobuf.Empty) {};
+    // DeleteDatabase deletes the database 'db_name'
+    rpc DeleteDatabase(google.protobuf.Empty) returns(google.protobuf.Empty) {};
+    // CreateDatabase creates the database 'db_name'
+    rpc CreateDatabase(google.protobuf.Empty) returns(google.protobuf.Empty) {};
+}

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package kvdb;
+option go_package="./;kvdbrpc";
+option cc_generic_services=true;
+
+// Direction represents a direction for a sort order
+message Direction {
+    bool direction = 1;
+}
+
+// Order represents a sort order
+message Order {
+    string key = 1;
+    Direction direction = 2;
+}
+
+// OrderBy represents a sequence of sort orders
+message OrderBy {
+    repeated Order order = 1;
+}

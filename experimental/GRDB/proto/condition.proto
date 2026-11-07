@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package kvdb;
+option go_package="./;kvdbrpc";
+option cc_generic_services=true;
+
+import "value.proto";
+
+// ManyConditions represents a sequence of conditions
+message ManyConditions {
+    repeated Condition cond = 1;
+}
+
+// LhsBool represents an IS condition
+message LhsBool {
+    string lhs = 1;
+    bool bool_value = 2;
+}
+
+// LhsManyValues represents an IN or NOT IN condition
+message LhsManyValues {
+    string lhs = 1;
+    repeated Value value = 2;
+}
+
+// LhsLowerUpper represents a BETWEEN or NOT BETWEEN condition
+message LhsLowerUpper {
+    string lhs = 1;
+    Value lower = 2;
+    Value upper = 3;
+}
+
+// LeafOperator represents an operator of the form "lhs op rhs" where lhs is a
+// key and rhs is a value.
+message LeafOperator {
+    // LeafType enumerates the possible leaf operators
+    enum LeafType {
+        UNDEFINED = 0;
+        EQ = 1; // equality
+        NE = 2; // not equal to
+        GT = 3; // greater than
+        LT = 4; // less than
+        GE = 5; // greater than or equal to
+        LE = 6; // less than or equal to
+    }
+    string lhs = 1;
+    LeafType opcode = 2;
+    Value rhs = 3;
+}
+
+// Condition describes a condition
+message Condition {
+    // CondType enumerates the possible condition types
+    enum CondType {
+        UNDEFINED = 0;  // Illegal value
+        AND = 1;        // An AND operator
+        BETWEEN = 2;    // A BETWEEN operator
+        BOOL = 3;       // True or False
+        IN = 4;         // An IN operator
+        LEAF = 5;       // An operator of the form "lhs op rhs"; see below
+        NOTBETWEEN = 6; // A NOT BETWEEN operator
+        NOTIN = 7;      // A NOT IN operator
+        OR = 8;         // An OR operator
+        IS = 9;         // An IS operator
+    }
+    CondType type = 1;  // The condition type
+    oneof value {       // The storage for the condition value(s)
+        ManyConditions many_conditions_value = 2;
+        LhsLowerUpper lhs_lower_upper_value = 3;
+        bool bool_value=4;
+        LhsManyValues lhs_many_values_value = 5;
+        LeafOperator leaf_value = 6;
+        LhsBool lhs_bool_value = 7;
+    }
+}

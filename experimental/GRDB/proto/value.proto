@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package kvdb;
+option go_package="./;kvdbrpc";
+option cc_generic_services=true;
+
+// Value describes a value in a record.
+message Value {
+    // Type enumerates the possible value types
+    enum Type {
+        UNDEFINED = 0;  // Illegal value
+        INT = 1;        // A signed integer (at most 64-bit)
+        INT8 = 2;       // 8-bit signed integer
+        INT16 = 3;      // 16-bit signed integer
+        INT32 = 4;      // 32-bit signed integer
+        INT64 = 5;      // 64-bit signed integer
+        UINT = 6;       // An unsigned integer (at most 64-bit)
+        UINT8 = 7;      // 8-bit unsigned integer
+        UINT16 = 8;     // 16-bit unsigned integer
+        UINT32 = 9;     // 32-bit unsigned integer
+        UINT64 = 10;    // 64-bit unsigned integer
+        BOOL = 11;      // Boolean value
+        FLOAT64 = 12;   // 64-bit float
+        STRING = 13;    // String value
+        BYTESLICE = 14; // An array of bytes (e.g. byte[...])
+    }
+    Type type = 1;  // The value type
+    oneof value {   // The storage for the value
+        int32 int32_value = 2;      // INT8, INT16, INT32
+        int64 int64_value = 3;      // INT, INT64
+        uint32 uint32_value = 4;    // UINT8, UINT16, UINT32
+        uint64 uint64_value = 5;    // UINT, UINT64
+        bool bool_value = 6;        // BOOL
+        double double_value = 7;    // FLOAT64
+        string string_value = 8;    // STRING
+        bytes bytes_value = 9;      // BYTESLICE
+    }
+}
