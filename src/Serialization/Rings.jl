@@ -83,7 +83,7 @@ end
 
 # Univariate and multivariate polynomial rings share the mrdi name
 # `PolynomialRing` and are told apart by their `_instance`. Without an
-# `_instance` a ring is loaded as univariate if it has a single variable.
+# `_instance` a ring is loaded as multivariate.
 @register_serialization_type PolyRing "PolynomialRing" uses_id
 @register_serialization_type MPolyRing "PolynomialRing" uses_id default
 @register_serialization_type UniversalPolyRing uses_id
